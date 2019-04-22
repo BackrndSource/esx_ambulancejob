@@ -86,96 +86,108 @@ ESX.RegisterServerCallback('esx_ambulancejob:removeItemsAfterRPDeath', function(
 			end)
 		end
 	end
+		
 	cb()
 end)
 
 if Config.EarlyRespawnFine then
 	ESX.RegisterServerCallback('esx_ambulancejob:checkBalance', function(source, cb)
 		local xPlayer = ESX.GetPlayerFromId(source)
-		local bankBalance = xPlayer.getAccount('bank').money
+		if xPlayer ~= nil then
 
-		cb(bankBalance >= Config.EarlyRespawnFineAmount)
+			local bankBalance = xPlayer.getAccount('bank').money
+
+			cb(bankBalance >= Config.EarlyRespawnFineAmount)
+		end
 	end)
 
 	RegisterServerEvent('esx_ambulancejob:payFine')
 	AddEventHandler('esx_ambulancejob:payFine', function()
 		local xPlayer = ESX.GetPlayerFromId(source)
-		local fineAmount = Config.EarlyRespawnFineAmount
+		if xPlayer ~= nil then
 
-		TriggerClientEvent('esx:showNotification', xPlayer.source, _U('respawn_bleedout_fine_msg', ESX.Math.GroupDigits(fineAmount)))
-		xPlayer.removeAccountMoney('bank', fineAmount)
+			local fineAmount = Config.EarlyRespawnFineAmount
+
+			TriggerClientEvent('esx:showNotification', xPlayer.source, _U('respawn_bleedout_fine_msg', ESX.Math.GroupDigits(fineAmount)))
+			xPlayer.removeAccountMoney('bank', fineAmount)
+		end
 	end)
 end
 
 ESX.RegisterServerCallback('esx_ambulancejob:getItemAmount', function(source, cb, item)
 	local xPlayer = ESX.GetPlayerFromId(source)
-	local quantity = xPlayer.getInventoryItem(item).count
+	if xPlayer ~= nil then
+		local quantity = xPlayer.getInventoryItem(item).count
+	end
 
 	cb(quantity)
 end)
 
 ESX.RegisterServerCallback('esx_ambulancejob:buyJobVehicle', function(source, cb, vehicleProps, type)
 	local xPlayer = ESX.GetPlayerFromId(source)
-	local price = getPriceFromHash(vehicleProps.model, xPlayer.job.grade_name, type)
+	if xPlayer ~= nil then
+		local price = getPriceFromHash(vehicleProps.model, xPlayer.job.grade_name, type)
 
-	-- vehicle model not found
-	if price == 0 then
-		print(('esx_ambulancejob: %s attempted to exploit the shop! (invalid vehicle model)'):format(xPlayer.identifier))
-		cb(false)
-	end
+		-- vehicle model not found
+		if price == 0 then
+			print(('esx_ambulancejob: %s attempted to exploit the shop! (invalid vehicle model)'):format(xPlayer.identifier))
+			cb(false)
+		end
 
-	if xPlayer.getMoney() >= price then
-		xPlayer.removeMoney(price)
+		if xPlayer.getMoney() >= price then
+			xPlayer.removeMoney(price)
 
-		MySQL.Async.execute('INSERT INTO owned_vehicles (owner, vehicle, plate, type, job, `stored`) VALUES (@owner, @vehicle, @plate, @type, @job, @stored)', {
-			['@owner'] = xPlayer.identifier,
-			['@vehicle'] = json.encode(vehicleProps),
-			['@plate'] = vehicleProps.plate,
-			['@type'] = type,
-			['@job'] = xPlayer.job.name,
-			['@stored'] = true
-		}, function (rowsChanged)
-			cb(true)
-		end)
-	else
-		cb(false)
+			MySQL.Async.execute('INSERT INTO owned_vehicles (owner, vehicle, plate, type, job, `stored`) VALUES (@owner, @vehicle, @plate, @type, @job, @stored)', {
+				['@owner'] = xPlayer.identifier,
+				['@vehicle'] = json.encode(vehicleProps),
+				['@plate'] = vehicleProps.plate,
+				['@type'] = type,
+				['@job'] = xPlayer.job.name,
+				['@stored'] = true
+			}, function (rowsChanged)
+				cb(true)
+			end)
+		else
+			cb(false)
+		end
 	end
 end)
 
 ESX.RegisterServerCallback('esx_ambulancejob:storeNearbyVehicle', function(source, cb, nearbyVehicles)
 	local xPlayer = ESX.GetPlayerFromId(source)
-	local foundPlate, foundNum
+	if xPlayer ~= nil then
+		local foundPlate, foundNum
 
-	for k,v in ipairs(nearbyVehicles) do
-		local result = MySQL.Sync.fetchAll('SELECT plate FROM owned_vehicles WHERE owner = @owner AND plate = @plate AND job = @job', {
-			['@owner'] = xPlayer.identifier,
-			['@plate'] = v.plate,
-			['@job'] = xPlayer.job.name
-		})
+		for k,v in ipairs(nearbyVehicles) do
+			local result = MySQL.Sync.fetchAll('SELECT plate FROM owned_vehicles WHERE owner = @owner AND plate = @plate AND job = @job', {
+				['@owner'] = xPlayer.identifier,
+				['@plate'] = v.plate,
+				['@job'] = xPlayer.job.name
+			})
 
-		if result[1] then
-			foundPlate, foundNum = result[1].plate, k
-			break
+			if result[1] then
+				foundPlate, foundNum = result[1].plate, k
+				break
+			end
+		end
+
+		if not foundPlate then
+			cb(false)
+		else
+			MySQL.Async.execute('UPDATE owned_vehicles SET `stored` = true WHERE owner = @owner AND plate = @plate AND job = @job', {
+				['@owner'] = xPlayer.identifier,
+				['@plate'] = foundPlate,
+				['@job'] = xPlayer.job.name
+			}, function (rowsChanged)
+				if rowsChanged == 0 then
+					print(('esx_ambulancejob: %s has exploited the garage!'):format(xPlayer.identifier))
+					cb(false)
+				else
+					cb(true, foundNum)
+				end
+			end)
 		end
 	end
-
-	if not foundPlate then
-		cb(false)
-	else
-		MySQL.Async.execute('UPDATE owned_vehicles SET `stored` = true WHERE owner = @owner AND plate = @plate AND job = @job', {
-			['@owner'] = xPlayer.identifier,
-			['@plate'] = foundPlate,
-			['@job'] = xPlayer.job.name
-		}, function (rowsChanged)
-			if rowsChanged == 0 then
-				print(('esx_ambulancejob: %s has exploited the garage!'):format(xPlayer.identifier))
-				cb(false)
-			else
-				cb(true, foundNum)
-			end
-		end)
-	end
-
 end)
 
 function getPriceFromHash(hashKey, jobGrade, type)
@@ -204,39 +216,43 @@ RegisterServerEvent('esx_ambulancejob:removeItem')
 AddEventHandler('esx_ambulancejob:removeItem', function(item)
 	local _source = source
 	local xPlayer = ESX.GetPlayerFromId(_source)
+	if xPlayer ~= nil then
 
-	xPlayer.removeInventoryItem(item, 1)
+		xPlayer.removeInventoryItem(item, 1)
 
-	if item == 'bandage' then
-		TriggerClientEvent('esx:showNotification', _source, _U('used_bandage'))
-	elseif item == 'medikit' then
-		TriggerClientEvent('esx:showNotification', _source, _U('used_medikit'))
+		if item == 'bandage' then
+			TriggerClientEvent('esx:showNotification', _source, _U('used_bandage'))
+		elseif item == 'medikit' then
+			TriggerClientEvent('esx:showNotification', _source, _U('used_medikit'))
+		end
 	end
 end)
 
 RegisterServerEvent('esx_ambulancejob:giveItem')
 AddEventHandler('esx_ambulancejob:giveItem', function(itemName)
 	local xPlayer = ESX.GetPlayerFromId(source)
+	if xPlayer ~= nil then
 
-	if xPlayer.job.name ~= 'ambulance' then
-		print(('esx_ambulancejob: %s attempted to spawn in an item!'):format(xPlayer.identifier))
-		return
-	elseif (itemName ~= 'medikit' and itemName ~= 'bandage') then
-		print(('esx_ambulancejob: %s attempted to spawn in an item!'):format(xPlayer.identifier))
-		return
-	end
+		if xPlayer.job.name ~= 'ambulance' then
+			print(('esx_ambulancejob: %s attempted to spawn in an item!'):format(xPlayer.identifier))
+			return
+		elseif (itemName ~= 'medikit' and itemName ~= 'bandage') then
+			print(('esx_ambulancejob: %s attempted to spawn in an item!'):format(xPlayer.identifier))
+			return
+		end
 
-	local xItem = xPlayer.getInventoryItem(itemName)
-	local count = 1
+		local xItem = xPlayer.getInventoryItem(itemName)
+		local count = 1
 
-	if xItem.limit ~= -1 then
-		count = xItem.limit - xItem.count
-	end
+		if xItem.limit ~= -1 then
+			count = xItem.limit - xItem.count
+		end
 
-	if xItem.count < xItem.limit then
-		xPlayer.addInventoryItem(itemName, count)
-	else
-		TriggerClientEvent('esx:showNotification', source, _U('max_item'))
+		if xItem.count < xItem.limit then
+			xPlayer.addInventoryItem(itemName, count)
+		else
+			TriggerClientEvent('esx:showNotification', source, _U('max_item'))
+		end
 	end
 end)
 
@@ -269,13 +285,15 @@ end)
 ESX.RegisterUsableItem('bandage', function(source)
 	if not playersHealing[source] then
 		local xPlayer = ESX.GetPlayerFromId(source)
-		xPlayer.removeInventoryItem('bandage', 1)
-	
-		playersHealing[source] = true
-		TriggerClientEvent('esx_ambulancejob:useItem', source, 'bandage')
+		if xPlayer ~= nil then
+			xPlayer.removeInventoryItem('bandage', 1)
 
-		Citizen.Wait(10000)
-		playersHealing[source] = nil
+			playersHealing[source] = true
+			TriggerClientEvent('esx_ambulancejob:useItem', source, 'bandage')
+
+			Citizen.Wait(10000)
+			playersHealing[source] = nil
+		end
 	end
 end)
 
