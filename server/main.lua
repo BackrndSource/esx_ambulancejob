@@ -6,34 +6,37 @@ TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
 RegisterServerEvent('esx_ambulancejob:revive')
 AddEventHandler('esx_ambulancejob:revive', function(target)
 	local xPlayer = ESX.GetPlayerFromId(source)
-
-	if xPlayer.job.name == 'ambulance' then
-		xPlayer.addMoney(Config.ReviveReward)
-		TriggerClientEvent('esx_ambulancejob:revive', target)
-	else
-		print(('esx_ambulancejob: %s attempted to revive!'):format(xPlayer.identifier))
+	if xPlayer ~= nil and target ~= nil then
+		if xPlayer.job.name == 'ambulance' then
+			xPlayer.addMoney(Config.ReviveReward)
+			TriggerClientEvent('esx_ambulancejob:revive', target)
+		else
+			print(('esx_ambulancejob: %s attempted to revive!'):format(xPlayer.identifier))
+		end
 	end
 end)
 
 RegisterServerEvent('esx_ambulancejob:heal')
 AddEventHandler('esx_ambulancejob:heal', function(target, type)
 	local xPlayer = ESX.GetPlayerFromId(source)
-
-	if xPlayer.job.name == 'ambulance' then
-		TriggerClientEvent('esx_ambulancejob:heal', target, type)
-	else
-		print(('esx_ambulancejob: %s attempted to heal!'):format(xPlayer.identifier))
+	if xPlayer ~= nil and target ~= nil then
+		if xPlayer.job.name == 'ambulance' then
+			TriggerClientEvent('esx_ambulancejob:heal', target, type)
+		else
+			print(('esx_ambulancejob: %s attempted to heal!'):format(xPlayer.identifier))
+		end
 	end
 end)
 
 RegisterServerEvent('esx_ambulancejob:putInVehicle')
 AddEventHandler('esx_ambulancejob:putInVehicle', function(target)
 	local xPlayer = ESX.GetPlayerFromId(source)
-
-	if xPlayer.job.name == 'ambulance' then
-		TriggerClientEvent('esx_ambulancejob:putInVehicle', target)
-	else
-		print(('esx_ambulancejob: %s attempted to put in vehicle!'):format(xPlayer.identifier))
+	if xPlayer ~= nil and target ~= nil then
+		if xPlayer.job.name == 'ambulance' then
+			TriggerClientEvent('esx_ambulancejob:putInVehicle', target)
+		else
+			print(('esx_ambulancejob: %s attempted to put in vehicle!'):format(xPlayer.identifier))
+		end
 	end
 end)
 
@@ -43,46 +46,46 @@ TriggerEvent('esx_society:registerSociety', 'ambulance', 'Ambulance', 'society_a
 
 ESX.RegisterServerCallback('esx_ambulancejob:removeItemsAfterRPDeath', function(source, cb)
 	local xPlayer = ESX.GetPlayerFromId(source)
+	if xPlayer ~= nil then
+		if Config.RemoveCashAfterRPDeath then
+			if xPlayer.getMoney() > 0 then
+				xPlayer.removeMoney(xPlayer.getMoney())
+			end
 
-	if Config.RemoveCashAfterRPDeath then
-		if xPlayer.getMoney() > 0 then
-			xPlayer.removeMoney(xPlayer.getMoney())
-		end
-
-		if xPlayer.getAccount('black_money').money > 0 then
-			xPlayer.setAccountMoney('black_money', 0)
-		end
-	end
-
-	if Config.RemoveItemsAfterRPDeath then
-		for i=1, #xPlayer.inventory, 1 do
-			if xPlayer.inventory[i].count > 0 then
-				xPlayer.setInventoryItem(xPlayer.inventory[i].name, 0)
+			if xPlayer.getAccount('black_money').money > 0 then
+				xPlayer.setAccountMoney('black_money', 0)
 			end
 		end
-	end
 
-	local playerLoadout = {}
-	if Config.RemoveWeaponsAfterRPDeath then
-		for i=1, #xPlayer.loadout, 1 do
-			xPlayer.removeWeapon(xPlayer.loadout[i].name)
-		end
-	else -- save weapons & restore em' since spawnmanager removes them
-		for i=1, #xPlayer.loadout, 1 do
-			table.insert(playerLoadout, xPlayer.loadout[i])
-		end
-
-		-- give back wepaons after a couple of seconds
-		Citizen.CreateThread(function()
-			Citizen.Wait(5000)
-			for i=1, #playerLoadout, 1 do
-				if playerLoadout[i].label ~= nil then
-					xPlayer.addWeapon(playerLoadout[i].name, playerLoadout[i].ammo)
+		if Config.RemoveItemsAfterRPDeath then
+			for i=1, #xPlayer.inventory, 1 do
+				if xPlayer.inventory[i].count > 0 then
+					xPlayer.setInventoryItem(xPlayer.inventory[i].name, 0)
 				end
 			end
-		end)
-	end
+		end
 
+		local playerLoadout = {}
+		if Config.RemoveWeaponsAfterRPDeath then
+			for i=1, #xPlayer.loadout, 1 do
+				xPlayer.removeWeapon(xPlayer.loadout[i].name)
+			end
+		else -- save weapons & restore em' since spawnmanager removes them
+			for i=1, #xPlayer.loadout, 1 do
+				table.insert(playerLoadout, xPlayer.loadout[i])
+			end
+
+			-- give back wepaons after a couple of seconds
+			Citizen.CreateThread(function()
+				Citizen.Wait(5000)
+				for i=1, #playerLoadout, 1 do
+					if playerLoadout[i].label ~= nil then
+						xPlayer.addWeapon(playerLoadout[i].name, playerLoadout[i].ammo)
+					end
+				end
+			end)
+		end
+	end
 	cb()
 end)
 
