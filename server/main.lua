@@ -6,34 +6,37 @@ TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
 RegisterServerEvent('esx_ambulancejob:revive')
 AddEventHandler('esx_ambulancejob:revive', function(target)
 	local xPlayer = ESX.GetPlayerFromId(source)
-
-	if xPlayer.job.name == 'ambulance' then
-		xPlayer.addMoney(Config.ReviveReward)
-		TriggerClientEvent('esx_ambulancejob:revive', target)
-	else
-		print(('esx_ambulancejob: %s attempted to revive!'):format(xPlayer.identifier))
+	if xPlayer ~= nil and target ~= nil then
+		if xPlayer.job.name == 'ambulance' then
+			xPlayer.addMoney(Config.ReviveReward)
+			TriggerClientEvent('esx_ambulancejob:revive', target)
+		else
+			print(('esx_ambulancejob: %s attempted to revive!'):format(xPlayer.identifier))
+		end
 	end
 end)
 
 RegisterServerEvent('esx_ambulancejob:heal')
 AddEventHandler('esx_ambulancejob:heal', function(target, type)
 	local xPlayer = ESX.GetPlayerFromId(source)
-
-	if xPlayer.job.name == 'ambulance' then
-		TriggerClientEvent('esx_ambulancejob:heal', target, type)
-	else
-		print(('esx_ambulancejob: %s attempted to heal!'):format(xPlayer.identifier))
+	if xPlayer ~= nil and target ~= nil then
+		if xPlayer.job.name == 'ambulance' then
+			TriggerClientEvent('esx_ambulancejob:heal', target, type)
+		else
+			print(('esx_ambulancejob: %s attempted to heal!'):format(xPlayer.identifier))
+		end
 	end
 end)
 
 RegisterServerEvent('esx_ambulancejob:putInVehicle')
 AddEventHandler('esx_ambulancejob:putInVehicle', function(target)
 	local xPlayer = ESX.GetPlayerFromId(source)
-
-	if xPlayer.job.name == 'ambulance' then
-		TriggerClientEvent('esx_ambulancejob:putInVehicle', target)
-	else
-		print(('esx_ambulancejob: %s attempted to put in vehicle!'):format(xPlayer.identifier))
+	if xPlayer ~= nil and target ~= nil then
+		if xPlayer.job.name == 'ambulance' then
+			TriggerClientEvent('esx_ambulancejob:putInVehicle', target)
+		else
+			print(('esx_ambulancejob: %s attempted to put in vehicle!'):format(xPlayer.identifier))
+		end
 	end
 end)
 
